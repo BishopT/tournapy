@@ -65,14 +65,14 @@ class Tournament:
 
     def df_players(self):
         d = {}
-        for i in range(len(self.players)):
-            d[f'{i}'] = self.players[i].as_series()
+        for k, v in self.players_dict.items():
+            d[f'{k}'] = v.as_series()
         return pd.DataFrame(d).T
 
     def df_teams(self):
         d = {}
-        for key, value in self.teams_dict.items():
-            d[f'{key}'] = value.as_series()
+        for k, v in self.teams_dict.items():
+            d[f'{k}'] = v.as_series()
         # TODO: sort by seeding
         return pd.DataFrame(d).T.sort_values(['elo'], ascending=False, ignore_index=True)
 
