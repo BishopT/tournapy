@@ -15,6 +15,7 @@ class Tournament:
         self.teams_dict: dict[str, Team] = {}
         self.phases: dict[int, RuleSet] = {}
         self.current_phase_idx = 0
+        self.logo_url: str = ""
 
     def setup(self, organizer, name, team_size):
         self.name = name

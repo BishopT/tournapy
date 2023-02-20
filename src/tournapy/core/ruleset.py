@@ -130,7 +130,7 @@ class SimpleElimination(RuleSet):
     def next_match(self, team):
         for m in list(map(self.get_match, self.match_queue)):
             # m = self.get_match(m_id)
-            print(f'team={team}')
+            # print(f'team={team}')
             if team == m.blue_team or team == m.red_team:
                 return m
         return None
@@ -197,3 +197,41 @@ class SimpleElimination(RuleSet):
                     match_id, self.bo, blue_team, red_team)
 
         return self.bracket
+
+
+class DoubleElimination(RuleSet):
+
+    def init_bracket(self):
+        pass
+
+    def report_match_result(self, match: Match, *games_score: tuple):
+        pass
+
+    def next_match(self, team):
+        pass
+
+
+class RoundRobin(RuleSet):
+
+    def init_bracket(self):
+        # TODO: use itertools.combinations
+        pass
+
+    def report_match_result(self, match: Match, *games_score: tuple):
+        pass
+
+    def next_match(self, team):
+        pass
+
+
+class SwissSystem(RuleSet):
+
+    def init_bracket(self):
+        # TODO: use itertools.combinations
+        pass
+
+    def report_match_result(self, match: Match, *games_score: tuple):
+        pass
+
+    def next_match(self, team):
+        pass

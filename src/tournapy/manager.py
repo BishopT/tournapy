@@ -14,10 +14,11 @@ class TournamentManager:
     def exists(self, tournament_name: str):
         return tournament_name in self.tourneys_dict.keys()
 
-    def create_tournament(self, tournament_name: str, team_size: int, user_id: str) -> bool:
+    def create_tournament(self, tournament_name: str, team_size: int, user_id: str, logo_url: str) -> bool:
         if not self.exists(tournament_name):
             tourney = Tournament()
             tourney.setup(user_id, tournament_name, team_size)
+            tourney.logo_url = logo_url
             self.tourneys_dict[tournament_name] = tourney
             return True
         else:
