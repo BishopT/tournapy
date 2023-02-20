@@ -1,7 +1,7 @@
 venv/
 src/__pycache__/
-src/tournapy/__pycache__/*
-src/tournapy/core/__pycache__/*
+src/tournapy/__pycache__/
+src/tournapy/core/__pycache__/
 dist/
 .idea/
 *.log
