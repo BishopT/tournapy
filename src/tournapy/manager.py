@@ -41,7 +41,7 @@ class TournamentManager:
                 ruleset = RulesetEnum(rules_name).get_ruleset(
                     phase_name, pool_size, bo)
                 t: Tournament = self.tourneys_dict[tournament_name]
-                t.add_phase(len(t.phases), ruleset)
+                t.add_phase(len(t.stages_dict), ruleset)
                 return True, f'{phase_name} phase added to {tournament_name} tournament.'
             else:
                 return False, f'{phase_name} phase cannot be added to {tournament_name}. Missing admin rights.'
@@ -77,14 +77,16 @@ class TournamentManager:
         else:
             return False, f'{tournament_name} does not exist.'
 
-    def add_player(self, tournament_name: str, player_name: str, user_id: str) -> (bool, str):
+    def add_player(self, tournament_name: str, player_name: str, player_elo: int, user_id: str) -> (bool, str):
         # user_id = user.id of admin or user.name of player
         if self.exists(tournament_name):
             # players can self register. Admins can register anyone
             if self.is_admin(tournament_name, user_id) or player_name == user_id:
                 t: Tournament = self.tourneys_dict[tournament_name]
-                t.add_player(player_name, 0)
-                return True, f'{player_name} player registered to {tournament_name}'
+                if t.add_player(player_name, player_elo):
+                    return True, f'{player_name} player registered to {tournament_name}'
+                else:
+                    return False, f'{player_name} already registered to {tournament_name}'
             else:
                 return False, f'{player_name} player cannot be registered to {tournament_name}. Missing admin rights'
         else:
@@ -115,6 +117,17 @@ class TournamentManager:
                 return success, feedback
             else:
                 return False, f'Cannot form a team. Missing admin rights'
+        else:
+            return False, f'Tournament {tournament_name} does not exists'
+
+    def remove_team(self, tournament_name: str, team_name: str, user_id: str) -> (bool, str):
+        if self.exists(tournament_name):
+            if self.is_admin(tournament_name, user_id):
+                t: Tournament = self.tourneys_dict[tournament_name]
+                success, feedback = t.remove_team(team_name)
+                return success, feedback
+            else:
+                return False, f'Cannot remove a team. Missing admin rights'
         else:
             return False, f'Tournament {tournament_name} does not exists'
 

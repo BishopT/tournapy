@@ -1,23 +1,45 @@
 import math
+from enum import Enum
 
 import pandas as pd
+
+
+class Rank(Enum):
+    @classmethod
+    def from_label(cls, label: str):
+        for e in cls:
+            if e.value['label'] == label:
+                return e
+
+    @classmethod
+    def from_elo(cls, elo: int):
+        for e in cls:
+            if elo == e.value['elo']:
+                return e
+
+    @classmethod
+    def as_list(cls) -> list[dict[str, int, str]]:
+        return [e.value for e in cls]
+
+    @property
+    def elo(self) -> int:
+        return self.value['elo']
+
+    @property
+    def emoji(self) -> str:
+        return self.value['emoji']
 
 
 class Player:
 
     def __init__(self, name):
-        self.__init__(name, None)
-        self.team = None
-        self.id = None
+        self.__init__(name, 0)
+        self.team: str = None  # team name
 
-    def __init__(self, name, elo):
-        self.id = None
+    def __init__(self, name, elo: int):
         self.name = name
-        self.elo = elo
-        self.team = None
-
-    def set_id(self, player_id):
-        self.id = player_id
+        self.elo: int = elo
+        self.team: str = None  # team name
 
     def set_team(self, team):
         self.team = team
@@ -50,7 +72,7 @@ class Team:
                          index=["name", "elo", "points", "goals diff"])
 
     def __repr__(self):
-        return f'{self.name}'
+        return f'{self.name} ({self.elo})'
 
 
 class Match:
@@ -60,10 +82,10 @@ class Match:
         self.bo = bo
         self.blue_team = blue_team
         self.red_team = red_team
-        self.blue_score: int = []
-        self.red_score: int = []
-        self.bo_blue_score = 0
-        self.bo_red_score = 0
+        self.blue_score: list[int] = []
+        self.red_score: list[int] = []
+        self.bo_blue_score: int = 0
+        self.bo_red_score: int = 0
         self.ended = False
 
     def __repr__(self):

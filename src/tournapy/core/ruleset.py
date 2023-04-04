@@ -32,7 +32,7 @@ class RulesetEnum(Enum):
             pass  # TODO: implement swiss system bracket
 
 
-class RuleSet(ABC):
+class Ruleset(ABC):
     @abstractmethod
     def init_bracket(self):
         pass
@@ -52,6 +52,7 @@ class RuleSet(ABC):
         self.pool_max_size = size
         self.bo = bo
         self.match_history: list[Match] = []
+        self.bracket_depth = 0
         self.bracket = {}
         self.match_queue: list[str] = []
         self.running = False
@@ -125,7 +126,7 @@ class RuleSet(ABC):
         )
 
 
-class SimpleElimination(RuleSet):
+class SimpleElimination(Ruleset):
 
     def next_match(self, team):
         for m in list(map(self.get_match, self.match_queue)):
@@ -174,23 +175,24 @@ class SimpleElimination(RuleSet):
         no_of_teams = len(self.pool)
         print(f'pool={self.pool}, {no_of_teams} teams')
 
-        bracket_depth = int(math.ceil(math.log(no_of_teams, 2)))
+        self.bracket_depth = int(math.ceil(math.log(no_of_teams, 2)))
         self.bracket = {}
-        for local_round in range(bracket_depth):
+        for local_round in range(self.bracket_depth):
             matches_count = int(math.pow(2, local_round))
             teams_in_round = matches_count * 2
             for i in range(matches_count):
                 match_id = f'{local_round}-{i + 1}'
-                if local_round != bracket_depth - 1:
+                if local_round != self.bracket_depth - 1:
                     blue_team = f'winner({(local_round + 1)}-{i + 1})'
                     red_team = f'winner({(local_round + 1)}-{teams_in_round - i})'
                 else:  # "first" round to be played, we know the teams
                     blue_seed = i + 1
                     blue_team = self.pool[blue_seed - 1].name
                     red_seed = teams_in_round - i
+                    print(f'red_seed={red_seed}')
                     try:
                         red_team = self.pool[red_seed - 1].name
-                    except KeyError:  # there is no team to compete
+                    except IndexError:  # there is no team to compete
                         red_team = 'forfeit'
                 self.match_queue.append(match_id)
                 self.bracket[match_id] = Match(
@@ -199,7 +201,7 @@ class SimpleElimination(RuleSet):
         return self.bracket
 
 
-class DoubleElimination(RuleSet):
+class DoubleElimination(Ruleset):
 
     def init_bracket(self):
         pass
@@ -211,7 +213,7 @@ class DoubleElimination(RuleSet):
         pass
 
 
-class RoundRobin(RuleSet):
+class RoundRobin(Ruleset):
 
     def init_bracket(self):
         # TODO: use itertools.combinations
@@ -224,7 +226,7 @@ class RoundRobin(RuleSet):
         pass
 
 
-class SwissSystem(RuleSet):
+class SwissSystem(Ruleset):
 
     def init_bracket(self):
         # TODO: use itertools.combinations
