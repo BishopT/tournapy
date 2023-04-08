@@ -61,8 +61,8 @@ class Team:
         self.size = 0
         self.elo = 0
         self.points = 0
-        self.goals_scored = 0
-        self.goals_taken = 0
+        self.goals_scored: int = 0
+        self.goals_taken: int = 0
 
     def set_name(self, name: str):
         self.name = name
@@ -89,19 +89,19 @@ class Match:
         self.ended = False
 
     def __repr__(self):
-        return f'{self.blue_team} : {self.bo_blue_score} - {self.bo_red_score} : {self.red_team}'
+        return f'{self.blue_team} VS {self.red_team}'
 
     def __json__(self, **options):
         return {self.blue_team: self.bo_blue_score, self.red_team: self.bo_red_score}
 
-    def add_game_result(self, blue_score, red_score):
+    def add_game_result(self, blue_score: int, red_score: int):
         if len(self.blue_score) < self.bo and not self.ended:
             self.blue_score.append(blue_score)
             self.red_score.append(red_score)
         else:
             raise Exception("BO is over, cannot add more games.")
 
-    def set_result(self, game, blue_score, red_score):
+    def set_result(self, game, blue_score: int, red_score: int):
         self.blue_score[game - 1] = blue_score
         self.red_score[game - 1] = red_score
 

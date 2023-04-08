@@ -1,3 +1,6 @@
+import math
+import random
+
 import pandas as pd
 
 from tournapy.core.model import Player, Team
@@ -14,7 +17,7 @@ class Tournament:
         self.players_dict: dict[str, Player] = {}
         self.teams_dict: dict[str, Team] = {}
         self.stages_dict: dict[int, Ruleset] = {}
-        self.current_phase_idx = 0
+        self.current_phase_idx: int = 0
         self.logo_url: str = ""
 
     def setup(self, organizer, name, team_size):
@@ -83,9 +86,80 @@ class Tournament:
     def get_team_elo(self, team_name: str) -> int:
         players = self.get_team_players(team_name)
         if len(players) != 0:
-            return sum(list(map(lambda p: p.elo, players))) / len(players)
+            return int(sum(list(map(lambda p: p.elo, players))) / len(players))
         else:
             return 0
+
+    def clear_teams(self):
+        teams_list = list(self.teams_dict.keys())
+        for team_name in teams_list:
+            success, feedback = self.remove_team(team_name)
+            if not success:
+                return False, feedback
+        return True, 'All teams removed'
+
+    def generate_teams(self) -> (bool, str):
+
+        players_num = len(self.players_dict.values())
+        team_num = math.floor(players_num / self.team_size)
+        ideal_team_elo = sum(list(map(lambda p: p.elo, self.players_dict.values()))) / players_num
+        print(f'ideal_team_elo={ideal_team_elo}')
+        try:
+            with open('resources/team_names.txt', 'r') as f:
+                names_list = [line.strip() for line in f.readlines()]
+                print(f'team_num={team_num}')
+                team_names = random.sample(names_list, team_num)
+                for team_name in team_names:
+                    print(f'New team={team_name}')
+                    # chatGPT
+                    self.teams_dict[team_name] = Team(team_name)
+                sorted_players = sorted(
+                    list(filter(lambda p: p.team is None, self.players_dict.values())),
+                    key=lambda p: p.elo, reverse=True)
+                for player in sorted_players:
+                    print(f'player={player}')
+                    sorted_teams = list(map(lambda t: t.name,
+                                            filter(lambda t: t.size < self.team_size,
+                                                   sorted(self.teams_dict.values(),
+                                                          key=lambda t: sum(
+                                                              list(map(lambda p: p.elo,
+                                                                       self.get_team_players(t.name))))))))
+                    lowest_team = sorted_teams[0]
+                    print(f'sorted_teams={sorted_teams}')
+                    success, feedback = self.add_to_team(lowest_team, player.name)
+                    print(f'success={success}')
+                    print(f'feedback={feedback}')
+                    print(f'player={player}')
+                    print(f'team elo={self.teams_dict[lowest_team]}')
+                    # MY WAY
+                    # sorted_players = sorted(
+                    #     list(filter(lambda p: p.team is None, self.players_dict.values())),
+                    #     key=lambda p: p.elo, reverse=True)
+                    # # print(f'sorted_players={sorted_players}')
+                    # self.add_to_team(team_name, sorted_players[0].name)
+                    # if self.teams_dict[team_name].size < self.team_size:
+                    #     self.add_to_team(team_name, sorted_players[len(sorted_players) - 1].name)
+                    # if self.teams_dict[team_name].size < self.team_size:
+                    #     current_team = self.get_team_players(team_name)
+                    #     # print(f'current_team={current_team}')
+                    #     current_team_elo_tot = sum(
+                    #         list(map(lambda p: p.elo, self.get_team_players(team_name))))
+                    #     # print(f'current_team_elo_tot={current_team_elo_tot}')
+                    #     next_player_limit = (ideal_team_elo + 15) * self.team_size - current_team_elo_tot
+                    #     # print(f'next_player_limit={next_player_limit}')
+                    #     next_players = sorted(
+                    #         list(filter(lambda p: p.elo < next_player_limit and p.team is None, sorted_players)),
+                    #         key=lambda p: p.elo, reverse=True)
+                    #     if len(next_players) == 0:
+                    #         next_players = sorted_players = sorted(
+                    #             list(filter(lambda p: p.team is None, self.players_dict.values())),
+                    #             key=lambda p: p.elo, reverse=False)
+                    #     # print(f'next_players={next_players}')
+                    #     self.add_to_team(team_name, next_players[0].name)
+                    # print(f'final team={team_name}: {self.get_team_players(team_name)}')
+            return True, 'Teams successfully generated'
+        except FileNotFoundError:
+            return False, 'Name generator cannot open resource file (FileNotFound)'
 
     def add_phase(self, order: int, ruleset: Ruleset):
         self.stages_dict[order] = ruleset
@@ -93,7 +167,8 @@ class Tournament:
     def get_current_phase(self) -> Ruleset:
         return self.get_phase(self.current_phase_idx)
 
-    def get_phase(self, phase_number) -> Ruleset:
+    def get_phase(self, phase_number: int) -> Ruleset:
+        # print(f'self.stages_dict={self.stages_dict}')
         return self.stages_dict[phase_number]
 
     def get_stage(self, stage_name) -> Ruleset:
@@ -109,7 +184,7 @@ class Tournament:
         d = {}
         for k, v in self.players_dict.items():
             d[f'{k}'] = v.as_series()
-        return pd.DataFrame(d).T
+        return pd.DataFrame(d).T.sort_values(['elo'], ascending=False, ignore_index=True)
 
     def df_teams(self):
         d = {}

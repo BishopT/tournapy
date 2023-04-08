@@ -42,6 +42,7 @@ class TournamentManager:
                     phase_name, pool_size, bo)
                 t: Tournament = self.tourneys_dict[tournament_name]
                 t.add_phase(len(t.stages_dict), ruleset)
+                print(f'team.stages_dict={t.stages_dict}')
                 return True, f'{phase_name} phase added to {tournament_name} tournament.'
             else:
                 return False, f'{phase_name} phase cannot be added to {tournament_name}. Missing admin rights.'
@@ -59,16 +60,23 @@ class TournamentManager:
                 # 2nd case: get list of teams sorted by their rankings.
                 else:
                     previous_phase = t.get_phase(t.current_phase_idx - 1)
-                    teams_names = previous_phase.get_standings()['name']
+                    # TODO implement & use tournament standings
+                    teams_sorted_ga = sorted(t.teams_dict.values(),
+                                             key=lambda team: (team.goals_scored - team.goals_taken),
+                                             reverse=True)
+                    teams_sorted = sorted(teams_sorted_ga, key=lambda team: team.points, reverse=True)
+                    teams_names = list(map(lambda team: team.name, teams_sorted))
                 next_phase = t.get_current_phase()
                 # adding previously retrieved list of teams. Will be added following team rank from previous phase.
                 # will not accept team if next phase pool is complete.
                 for team_name in teams_names:
-                    # next_phase.add_team(t.get_team(team_name))
+                    # next_phase.add_team(team.get_team(team_name))
                     next_phase.add_team(t.teams_dict[team_name])
                 if not next_phase.running:
                     next_phase.init_bracket()
                     next_phase.start()
+                    # TODO find a way to increment stage automatically at end of previous stage
+                    # t.current_phase_idx += 1
                     return True, f'{next_phase.name} phase started.'
                 else:
                     return False, f'{next_phase.name} already running.'
@@ -128,6 +136,28 @@ class TournamentManager:
                 return success, feedback
             else:
                 return False, f'Cannot remove a team. Missing admin rights'
+        else:
+            return False, f'Tournament {tournament_name} does not exists'
+
+    def clean_teams(self, tournament_name: str, user_id: str) -> (bool, str):
+        if self.exists(tournament_name):
+            if self.is_admin(tournament_name, user_id):
+                t: Tournament = self.tourneys_dict[tournament_name]
+                success, feedback = t.clear_teams()
+                return success, feedback
+            else:
+                return False, f'Cannot clear teams. Missing admin rights'
+        else:
+            return False, f'Tournament {tournament_name} does not exists'
+
+    def generate_teams(self, tournament_name: str, user_id: str) -> (bool, str):
+        if self.exists(tournament_name):
+            if self.is_admin(tournament_name, user_id):
+                t: Tournament = self.tourneys_dict[tournament_name]
+                success, feedback = t.generate_teams()
+                return success, feedback
+            else:
+                return False, f'Cannot generate teams. Missing admin rights'
         else:
             return False, f'Tournament {tournament_name} does not exists'
 

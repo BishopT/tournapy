@@ -1,3 +1,4 @@
+import itertools
 import math
 from abc import ABC, abstractmethod
 from enum import Enum
@@ -29,7 +30,10 @@ class RulesetEnum(Enum):
         if self is RulesetEnum.ROUND_ROBIN:
             pass  # TODO: implement round robin bracket
         if self is RulesetEnum.SWISS_SYSTEM:
-            pass  # TODO: implement swiss system bracket
+            return SwissSystem(name, self, pool_size, bo)
+
+    def __str__(self):
+        return self.value
 
 
 class Ruleset(ABC):
@@ -38,7 +42,7 @@ class Ruleset(ABC):
         pass
 
     @abstractmethod
-    def report_match_result(self, match: Match, *games_score: tuple):
+    def report_match_result(self, match: Match, blue_score: int, red_score: int):
         pass
 
     @abstractmethod
@@ -101,6 +105,8 @@ class Ruleset(ABC):
             # print(f'm.get_winner()={m.get_winner()}')
             blue_team = self.get_team(m.blue_team)
             red_team = self.get_team(m.red_team)
+            if red_team is None:
+                red_team = Team('forfeit')
             blue_team.goals_scored += sum(m.blue_score)
             blue_team.goals_taken += sum(m.red_score)
             red_team.goals_scored += sum(m.red_score)
@@ -114,10 +120,10 @@ class Ruleset(ABC):
             else:
                 blue_team.points += DRAW_POINTS
                 red_team.points += DRAW_POINTS
-        d = {}
-        for i in range(len(self.pool)):
-            d[f'{i}'] = self.pool[i].as_series()
-        return pd.DataFrame(d).T.sort_values(['points', 'goals diff'], ascending=[False, False], ignore_index=True)
+        # d = {}
+        # for i in range(len(self.pool)):
+        #     d[f'{i}'] = self.pool[i].as_series()
+        # return pd.DataFrame(d).T.sort_values(['points', 'goals diff'], ascending=[False, False], ignore_index=True)
 
     def as_series(self):
         return pd.Series(
@@ -139,12 +145,10 @@ class SimpleElimination(Ruleset):
     # def get_standings(self) -> pd.DataFrame:
     #     pass
 
-    def report_match_result(self, match: Match, *games_score: tuple):
+    def report_match_result(self, match: Match, blue_score: int, red_score: int):
         if self.running:
-            for gs in games_score:
-                blue_score, red_score = gs
-                match.add_game_result(blue_score, red_score)
-                match.compute_bo()
+            match.add_game_result(blue_score, red_score)
+            match.compute_bo()
             if match.ended:
                 print(f'match ended: {match}')
                 self.match_queue.remove(match.id)
@@ -167,9 +171,9 @@ class SimpleElimination(Ruleset):
                             f"Cannot program next match for {winner}")
                 else:  # no more match in phase
                     self.running = False
-
+            return f'match {match} updated.'
         else:
-            raise Exception('Cannot report match. phase not started')
+            return f'Cannot report match {match} from {self.name} stage. Stage not started.'
 
     def init_bracket(self) -> dict:
         no_of_teams = len(self.pool)
@@ -206,7 +210,7 @@ class DoubleElimination(Ruleset):
     def init_bracket(self):
         pass
 
-    def report_match_result(self, match: Match, *games_score: tuple):
+    def report_match_result(self, match: Match, blue_score: int, red_score: int):
         pass
 
     def next_match(self, team):
@@ -219,7 +223,7 @@ class RoundRobin(Ruleset):
         # TODO: use itertools.combinations
         pass
 
-    def report_match_result(self, match: Match, *games_score: tuple):
+    def report_match_result(self, match: Match, blue_score: int, red_score: int):
         pass
 
     def next_match(self, team):
@@ -228,12 +232,76 @@ class RoundRobin(Ruleset):
 
 class SwissSystem(Ruleset):
 
-    def init_bracket(self):
-        # TODO: use itertools.combinations
-        pass
+    def __init__(self, name: str, rules_type: RulesetEnum, size: int, bo: int):
+        Ruleset.__init__(self, name, rules_type, size, bo)
+        self.round = 0
+        self.max_rounds = 5
 
-    def report_match_result(self, match: Match, *games_score: tuple):
-        pass
+    @staticmethod
+    def grouper(iterable, n):
+        # coming from https://docs.python.org/fr/3/library/itertools.html#itertools-recipes
+        args = [iter(iterable)] * n
+        print(f'args={args}')
+        return list(itertools.zip_longest(*args, fillvalue='forfeit'))
+
+    def init_bracket(self):
+        self.round = 1
+        no_of_teams = len(self.pool)
+        print(f'pool={self.pool}, {no_of_teams} teams')
+
+        self.bracket = {}
+        groups: list[tuple[str]] = SwissSystem.grouper(list(map(lambda t: t.name, self.pool)), 2)
+        for group in groups:
+            print(f'group={group}')
+            match_id = f'{self.round}-{groups.index(group)}'
+            m = Match(match_id, self.bo, blue_team=group[0], red_team=group[1])
+            self.bracket[match_id] = m
+            self.match_queue.append(match_id)
+
+    def report_match_result(self, match: Match, blue_score: int, red_score: int):
+        if self.running:
+            match.add_game_result(blue_score, red_score)
+            match.compute_bo()
+            if match.ended:
+                print(f'match ended: {match}')
+                self.match_queue.remove(match.id)
+                self.match_history.append(match)
+                self.update_bracket()
+            return f'match {match} updated.'
+        else:
+            return f'Cannot report match {match} from {self.name} stage. Stage not started.'
 
     def next_match(self, team):
-        pass
+        for m in list(map(self.get_match, self.match_queue)):
+            # m = self.get_match(m_id)
+            # print(f'team={team}')
+            if team == m.blue_team or team == m.red_team:
+                return m
+        return None
+
+    def update_bracket(self):
+        if len(self.match_queue):
+            print(f'round {self.round} not yet finished.')
+        else:
+            print(f'round {self.round} finished.')
+            self.round += 1
+            if self.round > self.max_rounds:
+                print('All rounds finished. Stage is over')
+                self.running = False
+
+            else:
+                print(f'Computing bracket for round {self.round}')
+                self.get_standings()
+                filtered_teams = list(filter(lambda t: t.points < 9, self.pool))
+                teams_sorted_ga = sorted(filtered_teams,
+                                         key=lambda team: (team.goals_scored - team.goals_taken),
+                                         reverse=True)
+                teams_sorted = sorted(teams_sorted_ga, key=lambda team: team.points, reverse=True)
+                print(f'teams_sorted={teams_sorted}')
+                groups: list[tuple[str]] = SwissSystem.grouper(list(map(lambda t: t.name, teams_sorted)), 2)
+                for group in groups:
+                    print(f'group={group}')
+                    match_id = f'{self.round}-{groups.index(group)}'
+                    m = Match(match_id, self.bo, blue_team=group[0], red_team=group[1])
+                    self.bracket[match_id] = m
+                    self.match_queue.append(match_id)
